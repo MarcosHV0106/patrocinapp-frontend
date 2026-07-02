@@ -1,0 +1,58 @@
+<div class="modal-overlay" id="contract-modal">
+  <div class="modal-content">
+    <button class="modal-close" type="button" (click)="close.emit()"><i class="bi bi-x-lg"></i></button>
+    <div class="modal-header">
+      <h3>Propuesta de Patrocinio</h3>
+      <p>Vas a redactar una oferta para <strong>{{ deportista.nombreCompleto }}</strong></p>
+    </div>
+
+    <form (ngSubmit)="submit()">
+      <div class="modal-body">
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+          <img [src]="athleteImage(deportista.disciplina)" [alt]="deportista.nombreCompleto" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;" />
+          <div>
+            <span style="font-weight: 700; font-size: 1rem;">{{ deportista.nombreCompleto }}</span>
+            <div style="font-size: 0.8rem; color: var(--color-neon-blue); font-weight: 600;">{{ deportista.disciplina }}</div>
+          </div>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-box">Cargando hitos disponibles...</div>
+        } @else if (error()) {
+          <div class="alert-box error">{{ error() }}</div>
+        } @else {
+          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text-secondary);">Hitos Deportivos del Contrato</h4>
+
+          <div class="contract-meta-list compact-meta-list">
+            @for (plantilla of plantillas(); track plantilla.id; let idx = $index) {
+              <label class="contract-meta-option compact-meta-option">
+                <input type="checkbox" name="plantilla-{{ plantilla.id }}" [(ngModel)]="selected[plantilla.id]" />
+                <div>
+                  <h5><i class="bi bi-flag"></i> {{ plantilla.nombreMeta }}</h5>
+                  <p>{{ plantilla.descripcionSugerida }}</p>
+                </div>
+                <span style="color: var(--color-neon-green); font-weight: 600; white-space: nowrap;">{{ amounts[plantilla.id] | currency:'USD':'symbol':'1.0-0' }} USD</span>
+              </label>
+            }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="contract-amount">Monto Total Ofrecido ($ USD)</label>
+            <input type="number" id="contract-amount" class="form-input" [value]="totalDeportista()" readonly />
+            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Sugerido según metas del atleta: {{ totalDeportista() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="contract-terms">Cláusulas del Acuerdo / Términos Especiales</label>
+            <textarea id="contract-terms" name="comment" class="form-input form-textarea" placeholder="Especifica condiciones especiales, exclusividad de marca, uso de indumentaria, publicaciones en redes sociales..." required [(ngModel)]="comment"></textarea>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="close.emit()">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-glow" [disabled]="loading()"><i class="bi bi-send"></i> Enviar Propuesta</button>
+      </div>
+    </form>
+  </div>
+</div>

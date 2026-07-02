@@ -1,0 +1,421 @@
+<div class="dashboard-container" [class.public-marketplace]="isPublicMarketplace() && !session()">
+  @if (!isPublicMarketplace() || session()) {
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-heading">Navegación</div>
+
+      <button type="button" class="sidebar-item" [class.active]="tab() === 'resumen'" (click)="setTab('resumen')">
+        <i class="bi bi-speedometer2"></i>
+        <span>Resumen</span>
+      </button>
+
+      @if (!isDeportista()) {
+        <button type="button" class="sidebar-item" [class.active]="tab() === 'explorar'" (click)="setTab('explorar')">
+          <i class="bi bi-search"></i>
+          <span>Buscar Deportistas</span>
+        </button>
+      }
+
+      <button type="button" class="sidebar-item" [class.active]="tab() === 'patrocinios'" (click)="setTab('patrocinios')">
+        <i class="bi bi-shield-check"></i>
+        <span>{{ sidebarPatrociniosLabel() }}</span>
+      </button>
+
+      <div class="sidebar-user">
+        <div class="user-info">
+          <div class="user-name">{{ session()?.nombreMostrar || 'Usuario' }}</div>
+          <div class="user-role">{{ sessionRoleLabel() }}</div>
+        </div>
+      </div>
+    </aside>
+  }
+
+  <section class="dashboard-content">
+    @if (error()) { <div class="alert-box error">{{ error() }}</div> }
+    @if (success()) { <div class="alert-box success">{{ success() }}</div> }
+
+    @if (tab() === 'resumen') {
+      <div class="dashboard-hero-panel" [class.athlete-panel]="isDeportista()">
+        <div>
+          <span class="eyebrow">{{ sessionRoleLabel() }}</span>
+          <h2>{{ resumenTitle() }}</h2>
+          <p>{{ resumenSubtitle() }}</p>
+        </div>
+        <div class="hero-panel-action">
+          <span class="status-badge status-active">Periodo 2026</span>
+          @if (isNegocio()) {
+            <button type="button" class="btn btn-primary btn-glow" (click)="setTab('explorar')">
+              <i class="bi bi-person-plus"></i>
+              Buscar talentos
+            </button>
+          } @else {
+            <button type="button" class="btn btn-primary btn-glow" (click)="setTab('patrocinios')">
+              <i class="bi bi-upload"></i>
+              Gestionar evidencias
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="overview-grid role-overview-grid">
+        @if (isNegocio()) {
+          <div class="card-overview card-overview-featured">
+            <div class="overview-icon"><i class="bi bi-wallet2"></i></div>
+            <span class="overview-title">Capital comprometido</span>
+            <span class="overview-value overview-value-cyan">{{ totalInvertido() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <div class="overview-trend trend-positive"><i class="bi bi-graph-up-arrow"></i> Portafolio activo</div>
+          </div>
+
+          <div class="card-overview">
+            <div class="overview-icon"><i class="bi bi-people"></i></div>
+            <span class="overview-title">Deportistas patrocinados</span>
+            <span class="overview-value overview-value-green">{{ totalPatrocinados() }}</span>
+            <div class="overview-trend">Talentos bajo contrato</div>
+          </div>
+
+          <div class="card-overview">
+            <div class="overview-icon"><i class="bi bi-check2-circle"></i></div>
+            <span class="overview-title">Pagos realizados</span>
+            <span class="overview-value overview-value-green">{{ metasPagadas() }} / {{ totalMetas() }}</span>
+            <div class="overview-trend">Hitos pagados por evidencia</div>
+          </div>
+
+          <div class="card-overview attention-card" [class.needs-action]="evidenciasPendientes() > 0">
+            <div class="overview-icon"><i class="bi bi-clipboard-check"></i></div>
+            <span class="overview-title">Evidencias por validar</span>
+            <span class="overview-value">{{ evidenciasPendientes() }}</span>
+            <div class="overview-trend">{{ evidenciasPendientes() > 0 ? 'Requiere revisión' : 'Sin acciones pendientes' }}</div>
+          </div>
+        } @else {
+          <div class="card-overview card-overview-featured">
+            <div class="overview-icon"><i class="bi bi-cash-coin"></i></div>
+            <span class="overview-title">Monto pagado</span>
+            <span class="overview-value overview-value-cyan">{{ montoPagado() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <div class="overview-trend trend-positive"><i class="bi bi-patch-check"></i> Fondos liberados</div>
+          </div>
+
+          <div class="card-overview">
+            <div class="overview-icon"><i class="bi bi-building"></i></div>
+            <span class="overview-title">Patrocinadores</span>
+            <span class="overview-value overview-value-green">{{ totalPatrocinadores() }}</span>
+            <div class="overview-trend">Marcas que respaldan tu perfil</div>
+          </div>
+
+          <div class="card-overview">
+            <div class="overview-icon"><i class="bi bi-hourglass-split"></i></div>
+            <span class="overview-title">Evidencias pendientes</span>
+            <span class="overview-value">{{ metasPendientes() }}</span>
+            <div class="overview-trend">Metas por sustentar</div>
+          </div>
+
+          <div class="card-overview attention-card" [class.needs-action]="evidenciasPendientes() > 0">
+            <div class="overview-icon"><i class="bi bi-eye"></i></div>
+            <span class="overview-title">En revisión</span>
+            <span class="overview-value overview-value-green">{{ evidenciasPendientes() }}</span>
+            <div class="overview-trend">Evidencias enviadas al patrocinador</div>
+          </div>
+        }
+      </div>
+
+      <div class="table-card">
+        <div class="table-header dashboard-table-header">
+          <span>{{ isDeportista() ? 'Mis Patrocinadores' : 'Mis Patrocinados' }}</span>
+          <button type="button" class="btn btn-outline mini-action" (click)="setTab('patrocinios')">
+            Ver detalle
+          </button>
+        </div>
+
+        @if (loadingContratos()) {
+          <div class="loading-box table-loading">Cargando patrocinios...</div>
+        } @else if (contratos().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-shield-lock"></i></div>
+            <h3>{{ emptyTitle() }}</h3>
+            <p>{{ emptyMessage() }}</p>
+            @if (isNegocio()) {
+              <button type="button" class="btn btn-primary btn-glow" (click)="setTab('explorar')">Buscar Deportistas</button>
+            }
+          </div>
+        } @else {
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>{{ isDeportista() ? 'Patrocinador' : 'Deportista' }}</th>
+                <th>Monto contratado</th>
+                <th>Progreso</th>
+                <th>Estado de pago</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (contrato of contratos(); track contrato.idContrato; let idx = $index) {
+                <tr>
+                  <td>
+                    <div class="athlete-info-cell">
+                      @if (isDeportista()) {
+                        <div class="sponsor-avatar">{{ counterpartInitials(contrato) }}</div>
+                      } @else {
+                        <img [src]="athleteImage(contrato.disciplinaDeportista, idx)" [alt]="contrato.nombreDeportista" class="athlete-avatar" />
+                      }
+                      <div>
+                        <span class="user-name">{{ counterpartName(contrato) }}</span>
+                        <div class="cell-subtext">{{ counterpartSubtitle(contrato) }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="amount-cell">{{ contrato.montoTotal | currency:'USD':'symbol':'1.0-0' }} USD</span></td>
+                  <td>
+                    <div class="progress-cell">
+                      <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" [style.width.%]="contratoProgress(contrato)"></div>
+                      </div>
+                      <span>{{ contratoProgress(contrato) }}%</span>
+                    </div>
+                  </td>
+                  <td><span class="status-badge" [ngClass]="contratoStatusClass(contrato)">{{ contratoStatusLabel(contrato) }}</span></td>
+                  <td>
+                    <button type="button" class="btn btn-outline mini-action" (click)="setTab('patrocinios')">
+                      Administrar
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    }
+
+    @if (tab() === 'explorar' && !isDeportista()) {
+      <div class="dashboard-header-block">
+        <div>
+          <h2>Catálogo de Deportistas</h2>
+          <p>Busca talentos deportivos alineados con tu marca.</p>
+        </div>
+      </div>
+
+      <div class="search-filter-bar enhanced-filter-bar">
+        <div class="search-input-wrapper">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text" class="form-input search-input" placeholder="Buscar por nombre, disciplina o historia..." [(ngModel)]="busqueda" (input)="loadDeportistas()" />
+        </div>
+        <select class="select-filter" [(ngModel)]="disciplina" (change)="loadDeportistas()">
+          @for (item of disciplinas(); track item) {
+            <option [value]="item">{{ item }}</option>
+          }
+        </select>
+      </div>
+
+      @if (loadingDeportistas()) {
+        <div class="loading-box">Cargando deportistas...</div>
+      } @else if (deportistas().length === 0) {
+        <div class="empty-state table-card">
+          <div class="empty-icon"><i class="bi bi-search"></i></div>
+          <h3>No se encontraron deportistas.</h3>
+          <p>Ajusta los filtros o registra un deportista de prueba desde el módulo de registro.</p>
+        </div>
+      } @else {
+        <div class="athletes-grid marketplace-grid">
+          @for (athlete of deportistas(); track athlete.idUsuario; let idx = $index) {
+            <article class="athlete-card refined-athlete-card">
+              <div class="card-img-wrapper">
+                <span class="sport-badge">{{ athlete.disciplina }}</span>
+                <img [src]="athleteImage(athlete.disciplina, idx)" [alt]="athlete.nombreCompleto" />
+              </div>
+              <div class="card-content">
+                <h3>{{ athlete.nombreCompleto }}</h3>
+                <p class="card-story">{{ athlete.biografia }}</p>
+
+                <div class="athlete-card-footer">
+                  <div class="athlete-metric-row">
+                    <span>Objetivo sugerido</span>
+                    <strong>{{ athlete.montoObjetivo | currency:'USD':'symbol':'1.0-0' }} USD</strong>
+                  </div>
+
+                  @if (athlete.contratosActivos > 0) {
+                    <div class="active-sponsorship-note">
+                      <i class="bi bi-check-circle"></i>
+                      Ya cuenta con patrocinio activo
+                    </div>
+                  }
+
+                  <button type="button" class="btn btn-secondary btn-glow btn-block" (click)="propose(athlete)">
+                    <i class="bi bi-send"></i>
+                    Proponer Patrocinio
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    }
+
+    @if (tab() === 'patrocinios') {
+      <div class="dashboard-header-block">
+        <div>
+          <h2>{{ patrociniosTitle() }}</h2>
+          <p>{{ patrociniosSubtitle() }}</p>
+        </div>
+      </div>
+
+      @if (loadingContratos()) {
+        <div class="loading-box">Cargando patrocinios...</div>
+      } @else if (contratos().length === 0) {
+        <div class="table-card empty-state">
+          <div class="empty-icon"><i class="bi bi-folder2-open"></i></div>
+          <h3>{{ emptyTitle() }}</h3>
+          <p>{{ emptyMessage() }}</p>
+          @if (isNegocio()) {
+            <button type="button" class="btn btn-primary btn-glow" (click)="setTab('explorar')">Buscar Deportistas</button>
+          }
+        </div>
+      } @else {
+        <div class="sponsorships-detail-list">
+          @for (contrato of contratos(); track contrato.idContrato; let idx = $index) {
+            <div class="table-card contract-detail-card">
+              <div class="contract-detail-header">
+                <div class="athlete-info-cell">
+                  @if (isDeportista()) {
+                    <div class="sponsor-avatar sponsor-avatar-lg">{{ counterpartInitials(contrato) }}</div>
+                  } @else {
+                    <img [src]="athleteImage(contrato.disciplinaDeportista, idx)" [alt]="contrato.nombreDeportista" class="athlete-avatar athlete-avatar-lg" />
+                  }
+                  <div>
+                    <h3>{{ counterpartName(contrato) }}</h3>
+                    <span class="status-badge status-active">{{ counterpartSubtitle(contrato) }}</span>
+                  </div>
+                </div>
+                <div class="contract-amount-panel">
+                  <p>Monto de contrato</p>
+                  <span>{{ contrato.montoTotal | currency:'USD':'symbol':'1.0-0' }} USD</span>
+                  <small [class]="contratoStatusClass(contrato)">{{ contratoStatusLabel(contrato) }}</small>
+                </div>
+              </div>
+
+              <div class="contract-progress-strip">
+                <div>
+                  <strong>{{ contratoProgress(contrato) }}%</strong>
+                  <span>avance de pagos</span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" [style.width.%]="contratoProgress(contrato)"></div>
+                </div>
+              </div>
+
+              <h4 class="section-mini-title">Metas Deportivas e Hitos de Pago</h4>
+              <div class="goal-list refined-goal-list">
+                @for (meta of contrato.metas; track meta.idMeta) {
+                  <div class="goal-item refined-goal-item" [class.goal-paid]="meta.estado === 'PAGADA'">
+                    <div class="goal-details">
+                      <div class="goal-title-row">
+                        <h5>{{ meta.descripcionAcordada }}</h5>
+                        <span class="status-badge" [ngClass]="metaStatusClass(meta.estado)">{{ metaStatusLabel(meta.estado) }}</span>
+                      </div>
+                      <p>Monto para deportista: <strong>{{ meta.montoDeportista | currency:'USD':'symbol':'1.0-0' }} USD</strong></p>
+                      @if (meta.urlEvidencia) {
+                        <div class="evidence-box">
+                          <i class="bi bi-link-45deg"></i>
+                          <a [href]="meta.urlEvidencia" target="_blank" rel="noreferrer">Ver evidencia</a>
+                        </div>
+                      }
+                    </div>
+                    <div class="goal-actions">
+                      @if (session()?.rol === 'DEPORTISTA' && meta.estado === 'PENDIENTE') {
+                        <button type="button" class="btn btn-outline mini-action" (click)="openEvidenceModal(meta)">
+                          <i class="bi bi-upload"></i>
+                          Subir evidencia
+                        </button>
+                      }
+                      @if (session()?.rol === 'NEGOCIO' && meta.estado === 'EN_REVISION') {
+                        <button type="button" class="btn btn-primary btn-glow mini-action" (click)="openApprovalModal(meta)">
+                          <i class="bi bi-check2-circle"></i>
+                          Validar y pagar
+                        </button>
+                      }
+                      @if (meta.estado === 'PAGADA') {
+                        <span class="payment-confirmation"><i class="bi bi-patch-check-fill"></i> Pago liberado</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (selectedDeportista(); as deportista) {
+  <app-contract-modal
+    [deportista]="deportista"
+    [idNegocio]="session()?.id || 0"
+    (close)="selectedDeportista.set(null)"
+    (createContract)="createContract($event)" />
+}
+
+@if (selectedEvidenceMeta(); as meta) {
+  <div class="modal-overlay">
+    <div class="modal-content evidence-modal">
+      <button class="modal-close" type="button" (click)="closeEvidenceModal()"><i class="bi bi-x-lg"></i></button>
+      <div class="modal-header">
+        <span class="eyebrow">Entrega de evidencia</span>
+        <h3>Subir evidencia del hito</h3>
+        <p>{{ meta.descripcionAcordada }}</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="evidence-url">URL de evidencia</label>
+          <input id="evidence-url" type="url" class="form-input" placeholder="https://..." [(ngModel)]="evidenceUrl" />
+          <span class="form-help">Puedes usar un enlace público de Drive, Instagram, YouTube u otra fuente verificable.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="closeEvidenceModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-glow" (click)="submitEvidence()">
+          <i class="bi bi-upload"></i>
+          Enviar evidencia
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selectedApprovalMeta(); as meta) {
+  <div class="modal-overlay">
+    <div class="modal-content evidence-modal">
+      <button class="modal-close" type="button" (click)="closeApprovalModal()"><i class="bi bi-x-lg"></i></button>
+      <div class="modal-header">
+        <span class="eyebrow">Validación del patrocinador</span>
+        <h3>Validar y pagar hito</h3>
+        <p>{{ meta.descripcionAcordada }}</p>
+      </div>
+      <div class="modal-body">
+        <div class="approval-summary">
+          <div>
+            <span>Monto a liberar</span>
+            <strong>{{ meta.montoDeportista | currency:'USD':'symbol':'1.0-0' }} USD</strong>
+          </div>
+          <div>
+            <span>Estado actual</span>
+            <strong>{{ metaStatusLabel(meta.estado) }}</strong>
+          </div>
+        </div>
+        @if (meta.urlEvidencia) {
+          <div class="evidence-box approval-evidence">
+            <i class="bi bi-link-45deg"></i>
+            <a [href]="meta.urlEvidencia" target="_blank" rel="noreferrer">Abrir evidencia antes de aprobar</a>
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="closeApprovalModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-glow" (click)="approveSelectedMeta()">
+          <i class="bi bi-check2-circle"></i>
+          Confirmar pago
+        </button>
+      </div>
+    </div>
+  </div>
+}

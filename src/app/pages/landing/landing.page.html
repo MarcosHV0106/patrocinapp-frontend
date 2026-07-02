@@ -1,0 +1,123 @@
+<section class="hero-section">
+  <div class="hero-content">
+    <h1>Invierte en el <br><span class="logo-accent">Futuro del Deporte</span></h1>
+    <p class="hero-subtitle">
+      Patrocinapp es la plataforma de inversión deportiva que te permite patrocinar metas de atletas de élite, impulsando sus carreras mientras multiplicas el impacto y reconocimiento de tu marca.
+    </p>
+    <div class="hero-cta">
+      <a routerLink="/marketplace" class="btn btn-primary btn-glow" id="btn-hero-explore">Explorar Deportistas</a>
+      <a routerLink="/registro" class="btn btn-outline" id="btn-hero-register">Registrar Empresa</a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <img src="/sports_investor_hero.jpg" alt="Estadio Deportivo Digitalizado" class="hero-image" />
+  </div>
+</section>
+
+<section class="stats-banner" aria-label="Estadísticas de la Plataforma">
+  <div class="stat-item">
+    <h3>$1.4M+</h3>
+    <p>Invertido en Talento</p>
+  </div>
+  <div class="stat-item">
+    <h3>420+</h3>
+    <p>Deportistas Patrocinados</p>
+  </div>
+  <div class="stat-item">
+    <h3>94.8%</h3>
+    <p>Hitos Alcanzados</p>
+  </div>
+</section>
+
+<section class="featured-section">
+  <div class="section-header">
+    <div>
+      <h2>Deportistas Destacados</h2>
+      <p>Apoya sus metas y sé parte de su camino al podio.</p>
+    </div>
+    <a routerLink="/marketplace" class="btn btn-outline" style="padding: 0.5rem 1.25rem;">Ver Todos</a>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-box">Cargando deportistas destacados...</div>
+  } @else if (error()) {
+    <div class="alert-box error">{{ error() }}</div>
+  } @else if (featured().length === 0) {
+    <div class="loading-box">Aún no hay deportistas registrados.</div>
+  } @else {
+    <div class="athletes-grid">
+      @for (athlete of featured(); track athlete.idUsuario; let idx = $index) {
+        <article class="athlete-card">
+          <div class="card-img-wrapper">
+            <span class="sport-badge">{{ athlete.disciplina }}</span>
+            <img [src]="athleteImage(athlete.disciplina, idx)" [alt]="athlete.nombreCompleto" />
+          </div>
+
+          <div class="card-content">
+            <h3>{{ athlete.nombreCompleto }}</h3>
+            <p class="card-story">{{ athlete.biografia }}</p>
+
+            <div class="funding-progress-container">
+              <div class="funding-labels">
+                <span>Meta: <strong class="funding-target">{{ athlete.montoObjetivo | currency:'USD':'symbol':'1.0-0' }} USD</strong></span>
+                <span class="funding-percentage">{{ progressFor(idx) }}%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" [style.width.%]="progressFor(idx)"></div>
+              </div>
+            </div>
+
+            <a routerLink="/marketplace" class="btn btn-primary btn-glow btn-block" style="width: 100%; text-align: center;">
+              Explorar Metas
+            </a>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<section class="roi-calculator-container" id="roi-section">
+  <div class="calc-info">
+    <h2>Simulador de Impacto</h2>
+    <p>
+      Desliza la barra para estimar el retorno de exposición de marca y el alcance publicitario estimado que obtendrás patrocinando hitos en Patrocinapp.
+    </p>
+    <div class="result-card" style="background: rgba(0, 242, 254, 0.03); border: 1px solid rgba(0, 242, 254, 0.1);">
+      <h4 style="color: var(--color-neon-blue); margin-bottom: 0.5rem;">¿Por qué patrocinar?</h4>
+      <p style="font-size: 0.85rem; color: var(--color-text-secondary);">
+        Los contratos basados en metas garantizan exposición mediática y un vínculo emocional auténtico con tu comunidad.
+      </p>
+    </div>
+  </div>
+
+  <div class="calc-widget">
+    <div class="widget-group">
+      <div class="widget-label">
+        <span>Tu Inversión</span>
+        <span class="widget-val">{{ roiInvestment | currency:'USD':'symbol':'1.0-0' }} USD</span>
+      </div>
+      <input type="range" min="1000" max="100000" step="1000" [(ngModel)]="roiInvestment" class="slider-input" id="roi-slider" />
+    </div>
+
+    <div class="roi-results">
+      <div class="result-card">
+        <div class="result-title">Impresiones de Marca</div>
+        <div class="result-value">{{ estimatedImpressionsLabel }}</div>
+      </div>
+      <div class="result-card">
+        <div class="result-title">Valor de Exposición</div>
+        <div class="result-value">{{ mediaValue | currency:'USD':'symbol':'1.0-0' }}</div>
+      </div>
+      <div class="result-card">
+        <div class="result-title">Nuevos Seguidores</div>
+        <div class="result-value">+{{ followersLabel }}</div>
+      </div>
+      <div class="result-card">
+        <div class="result-title">Engagement Estimado</div>
+        <div class="result-value">{{ engagement }}%</div>
+      </div>
+    </div>
+  </div>
+</section>
