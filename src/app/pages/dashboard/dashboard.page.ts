@@ -1,24 +1,29 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { ContratoService } from '../../core/contrato.service';
 import { DeportistaService } from '../../core/deportista.service';
-import { MetaService } from '../../core/meta.service';
-import { ContratoDetalle, CrearContratoRequest, DeportistaCatalogo, EstadoMeta, MetaContratoDetalle } from '../../models/api.models';
+import { DashboardService } from '../../core/dashboard.service';
+import { NotificacionService } from '../../core/notificacion.service';
+import { httpErrorMessage } from '../../core/http-error.util';
+import { ContratoDetalle, CrearContratoRequest, DashboardResumen, DeportistaCatalogo, EstadoMeta, EvidenciaDetalle, HistorialContrato, MetaContratoDetalle, Notificacion } from '../../models/api.models';
 import { ContractModalComponent } from '../../shared/contract-modal/contract-modal.component';
+import { EvidenceUploadModalComponent } from '../../shared/evidence-upload-modal/evidence-upload-modal.component';
+import { EvidenceReviewModalComponent } from '../../shared/evidence-review-modal/evidence-review-modal.component';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CommonModule, FormsModule, RouterLink, ContractModalComponent],
+  imports: [CommonModule, FormsModule, ContractModalComponent, EvidenceUploadModalComponent, EvidenceReviewModalComponent],
   templateUrl: './dashboard.page.html'
 })
 export class DashboardPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly deportistaService = inject(DeportistaService);
   private readonly contratoService = inject(ContratoService);
-  private readonly metaService = inject(MetaService);
+  private readonly dashboardService = inject(DashboardService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -30,14 +35,18 @@ export class DashboardPage implements OnInit {
   readonly selectedDeportista = signal<DeportistaCatalogo | null>(null);
   readonly selectedEvidenceMeta = signal<MetaContratoDetalle | null>(null);
   readonly selectedApprovalMeta = signal<MetaContratoDetalle | null>(null);
+  readonly summary = signal<DashboardResumen | null>(null);
+  readonly notifications = signal<Notificacion[]>([]);
+  readonly histories = signal<Record<number, HistorialContrato>>({});
+  readonly expandedHistory = signal<number | null>(null);
   readonly loadingDeportistas = signal(true);
   readonly loadingContratos = signal(false);
+  readonly creatingContract = signal(false);
   readonly error = signal('');
   readonly success = signal('');
 
   busqueda = '';
   disciplina = 'Todos';
-  evidenceUrl = '';
 
   readonly isNegocio = computed(() => this.session()?.rol === 'NEGOCIO');
   readonly isDeportista = computed(() => this.session()?.rol === 'DEPORTISTA');
@@ -58,6 +67,7 @@ export class DashboardPage implements OnInit {
     .reduce((sum, meta) => sum + Number(this.isNegocio() ? meta.montoNegocio : meta.montoDeportista), 0));
   readonly totalPatrocinados = computed(() => new Set(this.contratos().map((contrato) => contrato.idDeportista)).size);
   readonly totalPatrocinadores = computed(() => new Set(this.contratos().map((contrato) => contrato.idNegocio)).size);
+  readonly unreadNotifications = computed(() => this.notifications().filter((item) => !item.leida).length);
 
   ngOnInit(): void {
     this.isPublicMarketplace.set(Boolean(this.route.snapshot.data['publicMarketplace']));
@@ -77,6 +87,8 @@ export class DashboardPage implements OnInit {
     }
 
     this.loadContratos();
+    this.loadSummary();
+    this.loadNotifications();
   }
 
   setTab(tab: 'resumen' | 'explorar' | 'patrocinios'): void {
@@ -152,50 +164,38 @@ export class DashboardPage implements OnInit {
   }
 
   createContract(request: CrearContratoRequest): void {
+    if (this.creatingContract()) return;
     this.error.set('');
     this.success.set('');
+    this.creatingContract.set(true);
 
     this.contratoService.crear(request).subscribe({
       next: () => {
+        this.creatingContract.set(false);
         this.selectedDeportista.set(null);
         this.success.set('Propuesta de patrocinio registrada correctamente.');
         this.tab.set('patrocinios');
         this.loadContratos();
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? 'No se pudo registrar la propuesta de patrocinio.');
+        this.creatingContract.set(false);
+        this.error.set(httpErrorMessage(err, 'No se pudo registrar la propuesta de patrocinio.'));
       }
     });
   }
 
   openEvidenceModal(meta: MetaContratoDetalle): void {
     this.selectedEvidenceMeta.set(meta);
-    this.evidenceUrl = meta.urlEvidencia ?? '';
   }
 
   closeEvidenceModal(): void {
     this.selectedEvidenceMeta.set(null);
-    this.evidenceUrl = '';
   }
 
-  submitEvidence(): void {
-    const meta = this.selectedEvidenceMeta();
-    const url = this.evidenceUrl.trim();
-
-    if (!meta || !url) {
-      this.error.set('Ingresa una URL de evidencia válida.');
-      return;
-    }
-
-    this.error.set('');
-    this.metaService.registrarEvidencia(meta.idMeta, url).subscribe({
-      next: () => {
-        this.success.set('Evidencia registrada correctamente. La meta quedó pendiente de validación.');
-        this.closeEvidenceModal();
-        this.loadContratos();
-      },
-      error: (err) => this.error.set(err?.error?.message ?? 'No se pudo registrar la evidencia.')
-    });
+  onEvidenceUploaded(_evidence: EvidenciaDetalle): void {
+    this.success.set('Evidencia enviada correctamente. El patrocinador ya puede revisarla.');
+    this.closeEvidenceModal();
+    this.refreshDashboard();
   }
 
   openApprovalModal(meta: MetaContratoDetalle): void {
@@ -206,19 +206,57 @@ export class DashboardPage implements OnInit {
     this.selectedApprovalMeta.set(null);
   }
 
-  approveSelectedMeta(): void {
-    const meta = this.selectedApprovalMeta();
-    if (!meta) return;
+  onEvidenceReviewed(result: 'approved' | 'rejected'): void {
+    this.success.set(result === 'approved'
+      ? 'Evidencia aprobada y pago liberado correctamente.'
+      : 'Evidencia rechazada. El motivo quedó disponible para el deportista.');
+    this.closeApprovalModal();
+    this.refreshDashboard();
+  }
 
-    this.error.set('');
-    this.metaService.aprobar(meta.idMeta).subscribe({
-      next: () => {
-        this.success.set('Meta validada y pagada correctamente.');
-        this.closeApprovalModal();
-        this.loadContratos();
-      },
-      error: (err) => this.error.set(err?.error?.message ?? 'No se pudo validar y pagar la meta.')
+  loadSummary(): void {
+    const role = this.session()?.rol;
+    if (!role) return;
+    this.dashboardService.resumen(role).subscribe({
+      next: (summary) => this.summary.set(summary),
+      error: (error) => this.error.set(httpErrorMessage(error, 'No se pudo cargar el resumen financiero.'))
     });
+  }
+
+  loadNotifications(): void {
+    if (!this.session()) return;
+    this.notificacionService.listar().subscribe({
+      next: (items) => this.notifications.set(items),
+      error: (error) => this.error.set(httpErrorMessage(error, 'No se pudieron cargar las notificaciones.'))
+    });
+  }
+
+  markNotificationRead(notification: Notificacion): void {
+    if (notification.leida) return;
+    this.notificacionService.marcarLeida(notification.id).subscribe({
+      next: (updated) => this.notifications.update((items) => items.map((item) => item.id === updated.id ? updated : item)),
+      error: (error) => this.error.set(httpErrorMessage(error, 'No se pudo actualizar la notificación.'))
+    });
+  }
+
+  toggleHistory(contrato: ContratoDetalle): void {
+    if (this.expandedHistory() === contrato.idContrato) {
+      this.expandedHistory.set(null);
+      return;
+    }
+    this.expandedHistory.set(contrato.idContrato);
+    if (this.histories()[contrato.idContrato]) return;
+    this.contratoService.historial(contrato.idContrato).subscribe({
+      next: (history) => this.histories.update((items) => ({ ...items, [contrato.idContrato]: history })),
+      error: (error) => this.error.set(httpErrorMessage(error, 'No se pudo cargar el historial del contrato.'))
+    });
+  }
+
+  private refreshDashboard(): void {
+    this.loadContratos();
+    this.loadSummary();
+    this.loadNotifications();
+    this.histories.set({});
   }
 
   logout(): void {

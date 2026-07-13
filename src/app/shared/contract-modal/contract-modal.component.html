@@ -26,7 +26,7 @@
           <div class="contract-meta-list compact-meta-list">
             @for (plantilla of plantillas(); track plantilla.id; let idx = $index) {
               <label class="contract-meta-option compact-meta-option">
-                <input type="checkbox" name="plantilla-{{ plantilla.id }}" [(ngModel)]="selected[plantilla.id]" />
+                <input type="checkbox" name="plantilla-{{ plantilla.id }}" [(ngModel)]="selected[plantilla.id]" (ngModelChange)="confirmation.set(false)" />
                 <div>
                   <h5><i class="bi bi-flag"></i> {{ plantilla.nombreMeta }}</h5>
                   <p>{{ plantilla.descripcionSugerida }}</p>
@@ -36,22 +36,28 @@
             }
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="contract-amount">Monto Total Ofrecido ($ USD)</label>
-            <input type="number" id="contract-amount" class="form-input" [value]="totalDeportista()" readonly />
-            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Sugerido según metas del atleta: {{ totalDeportista() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+          <div class="contract-financial-summary" aria-label="Resumen financiero de la propuesta">
+            <div><span>Para el deportista</span><strong>{{ totalDeportista() | currency:'USD':'symbol':'1.2-2' }} USD</strong></div>
+            <div><span>Comisión de plataforma (10%)</span><strong>{{ totalComision() | currency:'USD':'symbol':'1.2-2' }} USD</strong></div>
+            <div class="contract-total"><span>Total a retener</span><strong>{{ totalNegocio() | currency:'USD':'symbol':'1.2-2' }} USD</strong></div>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="contract-terms">Cláusulas del Acuerdo / Términos Especiales</label>
             <textarea id="contract-terms" name="comment" class="form-input form-textarea" placeholder="Especifica condiciones especiales, exclusividad de marca, uso de indumentaria, publicaciones en redes sociales..." required [(ngModel)]="comment"></textarea>
           </div>
+          @if (confirmation()) {
+            <div class="financial-confirmation" role="alert">
+              <i class="bi bi-shield-lock"></i>
+              <div><strong>Confirma la creación del contrato</strong><p>Se registrará un fondo de garantía por {{ totalNegocio() | currency:'USD':'symbol':'1.2-2' }} USD para las metas seleccionadas.</p></div>
+            </div>
+          }
         }
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline" (click)="close.emit()">Cancelar</button>
-        <button type="submit" class="btn btn-primary btn-glow" [disabled]="loading()"><i class="bi bi-send"></i> Enviar Propuesta</button>
+        <button type="button" class="btn btn-outline" [disabled]="busy" (click)="close.emit()">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-glow" [disabled]="loading() || busy"><i class="bi bi-send"></i> {{ busy ? 'Creando contrato...' : (confirmation() ? 'Confirmar y crear' : 'Revisar propuesta') }}</button>
       </div>
     </form>
   </div>

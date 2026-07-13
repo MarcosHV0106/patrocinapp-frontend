@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiClient } from './api-client';
-import { ContratoDetalle, CrearContratoRequest, CrearContratoResponse } from '../models/api.models';
+import { ContratoDetalle, CrearContratoRequest, CrearContratoResponse, HistorialContrato } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
 export class ContratoService {
@@ -16,5 +16,9 @@ export class ContratoService {
 
   listarPorDeportista(idDeportista: number) {
     return this.api.get<ContratoDetalle[]>(`/contratos/deportista/${idDeportista}`);
+  }
+
+  historial(idContrato: number) {
+    return this.api.get<HistorialContrato>(`/contratos/${idContrato}/historial`);
   }
 }

@@ -12,12 +12,12 @@
     <form (ngSubmit)="submit()">
       <div class="form-group">
         <label class="form-label" for="login-email">Correo Electrónico</label>
-        <input type="email" id="login-email" name="correo" class="form-input" placeholder="ejemplo@empresa.com" required [(ngModel)]="correo" />
+        <input type="email" id="login-email" name="correo" class="form-input" placeholder="ejemplo@empresa.com" required autocomplete="email" [disabled]="loading()" [(ngModel)]="correo" />
       </div>
 
       <div class="form-group">
         <label class="form-label" for="login-password">Contraseña</label>
-        <input type="password" id="login-password" name="password" class="form-input" placeholder="••••••••" required [(ngModel)]="password" />
+        <input type="password" id="login-password" name="password" class="form-input" placeholder="••••••••" required autocomplete="current-password" [disabled]="loading()" [(ngModel)]="password" />
       </div>
 
       <div class="auth-button-wrapper">
