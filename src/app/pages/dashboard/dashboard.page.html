@@ -61,50 +61,50 @@
           <div class="card-overview card-overview-featured">
             <div class="overview-icon"><i class="bi bi-wallet2"></i></div>
             <span class="overview-title">Capital comprometido</span>
-            <span class="overview-value overview-value-cyan">{{ totalInvertido() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <span class="overview-value overview-value-cyan">{{ (summary()?.montoComprometido ?? totalInvertido()) | currency:'USD':'symbol':'1.0-0' }} USD</span>
             <div class="overview-trend trend-positive"><i class="bi bi-graph-up-arrow"></i> Portafolio activo</div>
           </div>
 
           <div class="card-overview">
-            <div class="overview-icon"><i class="bi bi-people"></i></div>
-            <span class="overview-title">Deportistas patrocinados</span>
-            <span class="overview-value overview-value-green">{{ totalPatrocinados() }}</span>
-            <div class="overview-trend">Talentos bajo contrato</div>
+            <div class="overview-icon"><i class="bi bi-lock"></i></div>
+            <span class="overview-title">Monto retenido</span>
+            <span class="overview-value">{{ (summary()?.montoRetenido ?? 0) | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <div class="overview-trend">Fondo de garantía pendiente</div>
           </div>
 
           <div class="card-overview">
-            <div class="overview-icon"><i class="bi bi-check2-circle"></i></div>
-            <span class="overview-title">Pagos realizados</span>
-            <span class="overview-value overview-value-green">{{ metasPagadas() }} / {{ totalMetas() }}</span>
-            <div class="overview-trend">Hitos pagados por evidencia</div>
+            <div class="overview-icon"><i class="bi bi-unlock"></i></div>
+            <span class="overview-title">Monto liberado</span>
+            <span class="overview-value overview-value-green">{{ (summary()?.montoLiberado ?? 0) | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <div class="overview-trend">{{ summary()?.metasPagadas ?? metasPagadas() }} hitos pagados</div>
           </div>
 
           <div class="card-overview attention-card" [class.needs-action]="evidenciasPendientes() > 0">
             <div class="overview-icon"><i class="bi bi-clipboard-check"></i></div>
             <span class="overview-title">Evidencias por validar</span>
             <span class="overview-value">{{ evidenciasPendientes() }}</span>
-            <div class="overview-trend">{{ evidenciasPendientes() > 0 ? 'Requiere revisión' : 'Sin acciones pendientes' }}</div>
+            <div class="overview-trend">{{ evidenciasPendientes() > 0 ? 'Requiere revisión' : 'Sin acciones pendientes' }} · Comisión {{ (summary()?.comisionPlataforma ?? 0) | currency:'USD':'symbol':'1.0-0' }}</div>
           </div>
         } @else {
           <div class="card-overview card-overview-featured">
             <div class="overview-icon"><i class="bi bi-cash-coin"></i></div>
             <span class="overview-title">Monto pagado</span>
-            <span class="overview-value overview-value-cyan">{{ montoPagado() | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <span class="overview-value overview-value-cyan">{{ (summary()?.montoLiberado ?? montoPagado()) | currency:'USD':'symbol':'1.0-0' }} USD</span>
             <div class="overview-trend trend-positive"><i class="bi bi-patch-check"></i> Fondos liberados</div>
           </div>
 
           <div class="card-overview">
-            <div class="overview-icon"><i class="bi bi-building"></i></div>
-            <span class="overview-title">Patrocinadores</span>
-            <span class="overview-value overview-value-green">{{ totalPatrocinadores() }}</span>
-            <div class="overview-trend">Marcas que respaldan tu perfil</div>
+            <div class="overview-icon"><i class="bi bi-lock"></i></div>
+            <span class="overview-title">Saldo retenido</span>
+            <span class="overview-value">{{ (summary()?.montoRetenido ?? 0) | currency:'USD':'symbol':'1.0-0' }} USD</span>
+            <div class="overview-trend">Pendiente de evidencias aprobadas</div>
           </div>
 
           <div class="card-overview">
             <div class="overview-icon"><i class="bi bi-hourglass-split"></i></div>
-            <span class="overview-title">Evidencias pendientes</span>
-            <span class="overview-value">{{ metasPendientes() }}</span>
-            <div class="overview-trend">Metas por sustentar</div>
+            <span class="overview-title">Patrocinadores</span>
+            <span class="overview-value">{{ totalPatrocinadores() }}</span>
+            <div class="overview-trend">{{ summary()?.metasPendientes ?? metasPendientes() }} metas por sustentar</div>
           </div>
 
           <div class="card-overview attention-card" [class.needs-action]="evidenciasPendientes() > 0">
@@ -115,6 +115,25 @@
           </div>
         }
       </div>
+
+      <section class="notification-card table-card" aria-labelledby="notifications-title">
+        <div class="table-header dashboard-table-header">
+          <span id="notifications-title"><i class="bi bi-bell"></i> Notificaciones</span>
+          <span class="notification-count">{{ unreadNotifications() }} sin leer</span>
+        </div>
+        @if (notifications().length === 0) {
+          <div class="notification-empty">No tienes notificaciones por el momento.</div>
+        } @else {
+          <div class="notification-list">
+            @for (notification of notifications().slice(0, 6); track notification.id) {
+              <button type="button" class="notification-item" [class.unread]="!notification.leida" (click)="markNotificationRead(notification)">
+                <i class="bi" [class.bi-circle-fill]="!notification.leida" [class.bi-check-circle]="notification.leida" aria-hidden="true"></i>
+                <span><strong>{{ notification.mensaje }}</strong><small>{{ notification.fecha | date:'short' }}</small></span>
+              </button>
+            }
+          </div>
+        }
+      </section>
 
       <div class="table-card">
         <div class="table-header dashboard-table-header">
@@ -289,6 +308,7 @@
                   <p>Monto de contrato</p>
                   <span>{{ contrato.montoTotal | currency:'USD':'symbol':'1.0-0' }} USD</span>
                   <small [class]="contratoStatusClass(contrato)">{{ contratoStatusLabel(contrato) }}</small>
+                  <div class="fund-balance"><span>Retenido {{ contrato.montoRetenido | currency:'USD':'symbol':'1.0-0' }}</span><span>Liberado {{ contrato.montoLiberado | currency:'USD':'symbol':'1.0-0' }}</span></div>
                 </div>
               </div>
 
@@ -312,18 +332,21 @@
                         <span class="status-badge" [ngClass]="metaStatusClass(meta.estado)">{{ metaStatusLabel(meta.estado) }}</span>
                       </div>
                       <p>Monto para deportista: <strong>{{ meta.montoDeportista | currency:'USD':'symbol':'1.0-0' }} USD</strong></p>
-                      @if (meta.urlEvidencia) {
+                      @if (meta.evidenciaActual) {
                         <div class="evidence-box">
-                          <i class="bi bi-link-45deg"></i>
-                          <a [href]="meta.urlEvidencia" target="_blank" rel="noreferrer">Ver evidencia</a>
+                          <i class="bi bi-paperclip"></i>
+                          <span>{{ meta.evidenciaActual.nombreOriginal }} · intento {{ meta.evidenciaActual.numeroIntento }}</span>
                         </div>
+                      }
+                      @if (meta.estado === 'RECHAZADA' && meta.evidencias.at(-1)?.motivoRechazo; as motivo) {
+                        <div class="meta-rejection-message"><strong>Corrección solicitada:</strong> {{ motivo }}</div>
                       }
                     </div>
                     <div class="goal-actions">
-                      @if (session()?.rol === 'DEPORTISTA' && meta.estado === 'PENDIENTE') {
+                      @if (session()?.rol === 'DEPORTISTA' && (meta.estado === 'PENDIENTE' || meta.estado === 'RECHAZADA')) {
                         <button type="button" class="btn btn-outline mini-action" (click)="openEvidenceModal(meta)">
-                          <i class="bi bi-upload"></i>
-                          Subir evidencia
+                          <i class="bi" [class.bi-upload]="meta.estado === 'PENDIENTE'" [class.bi-arrow-repeat]="meta.estado === 'RECHAZADA'"></i>
+                          {{ meta.estado === 'RECHAZADA' ? 'Enviar nueva evidencia' : 'Subir evidencia' }}
                         </button>
                       }
                       @if (session()?.rol === 'NEGOCIO' && meta.estado === 'EN_REVISION') {
@@ -339,6 +362,32 @@
                   </div>
                 }
               </div>
+              <div class="contract-history-controls">
+                <button type="button" class="btn btn-outline mini-action" (click)="toggleHistory(contrato)">
+                  <i class="bi bi-clock-history"></i>
+                  {{ expandedHistory() === contrato.idContrato ? 'Ocultar historial' : 'Ver historial y transacciones' }}
+                </button>
+              </div>
+              @if (expandedHistory() === contrato.idContrato) {
+                <section class="contract-history" aria-label="Historial del contrato">
+                  @if (!histories()[contrato.idContrato]) {
+                    <div class="loading-box">Cargando historial...</div>
+                  } @else {
+                    <div class="history-columns">
+                      <div><h5>Revisiones de evidencia</h5>
+                        @for (item of histories()[contrato.idContrato].evidencias; track item.idEvidencia) {
+                          <div class="history-row"><span>Intento {{ item.numeroIntento }} · {{ item.nombreOriginal }}</span><strong>{{ item.estado.replace('_', ' ') }}</strong><small>{{ item.fechaCarga | date:'short' }}</small></div>
+                        } @empty { <p>Sin evidencias registradas.</p> }
+                      </div>
+                      <div><h5>Transacciones</h5>
+                        @for (transaction of histories()[contrato.idContrato].transacciones; track transaction.id) {
+                          <div class="history-row"><span>Meta #{{ transaction.idMetaContrato }}</span><strong>{{ transaction.montoNeto | currency:'USD':'symbol':'1.2-2' }} USD</strong><small>Comisión {{ transaction.comisionPlataforma | currency:'USD':'symbol':'1.2-2' }} · {{ transaction.fechaEjecucion | date:'short' }}</small></div>
+                        } @empty { <p>Aún no hay pagos liberados.</p> }
+                      </div>
+                    </div>
+                  }
+                </section>
+              }
             </div>
           }
         </div>
@@ -351,71 +400,15 @@
   <app-contract-modal
     [deportista]="deportista"
     [idNegocio]="session()?.id || 0"
+    [busy]="creatingContract()"
     (close)="selectedDeportista.set(null)"
     (createContract)="createContract($event)" />
 }
 
 @if (selectedEvidenceMeta(); as meta) {
-  <div class="modal-overlay">
-    <div class="modal-content evidence-modal">
-      <button class="modal-close" type="button" (click)="closeEvidenceModal()"><i class="bi bi-x-lg"></i></button>
-      <div class="modal-header">
-        <span class="eyebrow">Entrega de evidencia</span>
-        <h3>Subir evidencia del hito</h3>
-        <p>{{ meta.descripcionAcordada }}</p>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="evidence-url">URL de evidencia</label>
-          <input id="evidence-url" type="url" class="form-input" placeholder="https://..." [(ngModel)]="evidenceUrl" />
-          <span class="form-help">Puedes usar un enlace público de Drive, Instagram, YouTube u otra fuente verificable.</span>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" (click)="closeEvidenceModal()">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-glow" (click)="submitEvidence()">
-          <i class="bi bi-upload"></i>
-          Enviar evidencia
-        </button>
-      </div>
-    </div>
-  </div>
+  <app-evidence-upload-modal [meta]="meta" (close)="closeEvidenceModal()" (uploaded)="onEvidenceUploaded($event)" />
 }
 
 @if (selectedApprovalMeta(); as meta) {
-  <div class="modal-overlay">
-    <div class="modal-content evidence-modal">
-      <button class="modal-close" type="button" (click)="closeApprovalModal()"><i class="bi bi-x-lg"></i></button>
-      <div class="modal-header">
-        <span class="eyebrow">Validación del patrocinador</span>
-        <h3>Validar y pagar hito</h3>
-        <p>{{ meta.descripcionAcordada }}</p>
-      </div>
-      <div class="modal-body">
-        <div class="approval-summary">
-          <div>
-            <span>Monto a liberar</span>
-            <strong>{{ meta.montoDeportista | currency:'USD':'symbol':'1.0-0' }} USD</strong>
-          </div>
-          <div>
-            <span>Estado actual</span>
-            <strong>{{ metaStatusLabel(meta.estado) }}</strong>
-          </div>
-        </div>
-        @if (meta.urlEvidencia) {
-          <div class="evidence-box approval-evidence">
-            <i class="bi bi-link-45deg"></i>
-            <a [href]="meta.urlEvidencia" target="_blank" rel="noreferrer">Abrir evidencia antes de aprobar</a>
-          </div>
-        }
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" (click)="closeApprovalModal()">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-glow" (click)="approveSelectedMeta()">
-          <i class="bi bi-check2-circle"></i>
-          Confirmar pago
-        </button>
-      </div>
-    </div>
-  </div>
+  <app-evidence-review-modal [meta]="meta" (close)="closeApprovalModal()" (reviewed)="onEvidenceReviewed($event)" />
 }

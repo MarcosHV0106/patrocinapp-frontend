@@ -1,0 +1,57 @@
+<div class="modal-overlay" role="presentation" (click)="requestClose()">
+  <section class="modal-content evidence-modal evidence-workflow-modal" role="dialog" aria-modal="true"
+    aria-labelledby="review-title" (click)="$event.stopPropagation()">
+    <button class="modal-close" type="button" aria-label="Cerrar revisión" [disabled]="busy()" (click)="requestClose()"><i class="bi bi-x-lg"></i></button>
+    <header class="modal-header">
+      <span class="eyebrow">Revisión del patrocinador</span>
+      <h3 id="review-title">Revisar evidencia del hito</h3>
+      <p>{{ meta().descripcionAcordada }}</p>
+    </header>
+    <div class="modal-body evidence-modal-body">
+      @if (evidence(); as item) {
+        <div class="review-metadata">
+          <div><span>Archivo</span><strong>{{ item.nombreOriginal }}</strong></div>
+          <div><span>Intento</span><strong>#{{ item.numeroIntento }}</strong></div>
+          <div><span>Enviado</span><strong>{{ item.fechaCarga | date:'short' }}</strong></div>
+        </div>
+        <div class="protected-preview">
+          @if (!previewUrl() && !error()) { <div class="preview-loading">Cargando archivo protegido...</div> }
+          @if (previewKind() === 'image' && previewUrl()) { <img [src]="previewUrl()" alt="Evidencia enviada por el deportista" /> }
+          @if (previewKind() === 'video' && previewUrl()) { <video [src]="previewUrl()" controls aria-label="Video de evidencia"></video> }
+          @if (previewKind() === 'pdf' && previewUrl()) { <iframe [src]="safePdfUrl()" title="Documento PDF de evidencia"></iframe> }
+        </div>
+        @if (item.comentarioDeportista) { <div class="evidence-comment-display"><strong>Comentario del deportista</strong><p>{{ item.comentarioDeportista }}</p></div> }
+        <button type="button" class="btn btn-outline mini-action download-evidence" (click)="download()"><i class="bi bi-download"></i> Descargar archivo protegido</button>
+
+        @if (rejectionMode()) {
+          <div class="rejection-form">
+            <label class="form-label" for="rejection-reason">Motivo del rechazo <span aria-hidden="true">*</span></label>
+            <textarea id="rejection-reason" class="form-input" rows="4" maxlength="1000" [disabled]="busy()"
+              [(ngModel)]="rejectionReason" placeholder="Explica qué debe corregirse para aceptar el próximo envío."></textarea>
+            <div class="review-inline-actions">
+              <button type="button" class="btn btn-outline" [disabled]="busy()" (click)="rejectionMode.set(false)">Volver</button>
+              <button type="button" class="btn btn-danger" [disabled]="busy() || !rejectionReason.trim()" (click)="reject()">{{ busy() ? 'Rechazando...' : 'Confirmar rechazo' }}</button>
+            </div>
+          </div>
+        } @else if (approvalConfirmation()) {
+          <div class="financial-confirmation" role="alert">
+            <i class="bi bi-shield-check"></i>
+            <div><strong>Confirmación financiera</strong><p>Al aprobar se liberarán {{ meta().montoDeportista | currency:'USD':'symbol':'1.2-2' }} USD y la operación no podrá repetirse.</p></div>
+          </div>
+          <div class="review-inline-actions">
+            <button type="button" class="btn btn-outline" [disabled]="busy()" (click)="approvalConfirmation.set(false)">Volver</button>
+            <button type="button" class="btn btn-primary btn-glow" [disabled]="busy()" (click)="approve()">{{ busy() ? 'Procesando...' : 'Aprobar y liberar pago' }}</button>
+          </div>
+        } @else {
+          <div class="review-primary-actions">
+            <button type="button" class="btn btn-outline rejection-button" (click)="rejectionMode.set(true)"><i class="bi bi-x-circle"></i> Rechazar</button>
+            <button type="button" class="btn btn-primary btn-glow" (click)="approvalConfirmation.set(true)"><i class="bi bi-check2-circle"></i> Aprobar</button>
+          </div>
+        }
+      } @else {
+        <div class="inline-error" role="alert">No existe una evidencia en revisión para esta meta.</div>
+      }
+      @if (error()) { <div class="inline-error" role="alert"><i class="bi bi-exclamation-circle"></i> {{ error() }}</div> }
+    </div>
+  </section>
+</div>

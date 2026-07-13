@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -25,6 +25,23 @@ export class ApiClient {
     return this.http
       .put<ApiResponse<T>>(`${this.baseUrl}${path}`, body)
       .pipe(map((response) => response.data));
+  }
+
+  patch<T>(path: string, body: unknown): Observable<T> {
+    return this.http
+      .patch<ApiResponse<T>>(`${this.baseUrl}${path}`, body)
+      .pipe(map((response) => response.data));
+  }
+
+  upload<T>(path: string, body: FormData): Observable<HttpEvent<ApiResponse<T>>> {
+    return this.http.post<ApiResponse<T>>(`${this.baseUrl}${path}`, body, {
+      observe: 'events',
+      reportProgress: true
+    });
+  }
+
+  download(path: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}${path}`, { responseType: 'blob' });
   }
 
   private toParams(params?: Record<string, string | number | boolean | null | undefined>): HttpParams {

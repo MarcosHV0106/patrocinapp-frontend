@@ -1,22 +1,21 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { tap } from 'rxjs';
 import { ApiClient } from './api-client';
 import { LoginRequest, LoginResponse, RegisterDeportistaRequest, RegisterNegocioRequest, RegisterResponse } from '../models/api.models';
 import { inject } from '@angular/core';
-
-const SESSION_KEY = 'patrocinapp_session';
+import { SessionStore } from './session-store';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ApiClient);
-  private readonly sessionSignal = signal<LoginResponse | null>(this.restoreSession());
+  private readonly store = inject(SessionStore);
 
-  readonly session = this.sessionSignal.asReadonly();
-  readonly token = computed(() => this.sessionSignal()?.token ?? null);
+  readonly session = this.store.session;
+  readonly token = this.store.token;
 
   login(request: LoginRequest) {
     return this.api.post<LoginResponse>('/auth/login', request).pipe(
-      tap((session) => this.saveSession(session))
+      tap((session) => this.store.save(session))
     );
   }
 
@@ -29,28 +28,14 @@ export class AuthService {
   }
 
   saveSession(session: LoginResponse): void {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    this.sessionSignal.set(session);
+    this.store.save(session);
   }
 
   logout(): void {
-    localStorage.removeItem(SESSION_KEY);
-    this.sessionSignal.set(null);
+    this.store.clear();
   }
 
   isAuthenticated(): boolean {
-    return Boolean(this.sessionSignal()?.token);
-  }
-
-  private restoreSession(): LoginResponse | null {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-
-    try {
-      return JSON.parse(raw) as LoginResponse;
-    } catch {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
+    return this.store.isAuthenticated();
   }
 }

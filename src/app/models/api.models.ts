@@ -7,6 +7,7 @@ export interface ApiResponse<T> {
 export type Rol = 'NEGOCIO' | 'DEPORTISTA';
 export type EstadoContrato = 'PENDIENTE' | 'ACTIVO' | 'FINALIZADO' | 'CANCELADO';
 export type EstadoMeta = 'PENDIENTE' | 'EN_REVISION' | 'APROBADA' | 'RECHAZADA' | 'PAGADA';
+export type EstadoEvidencia = 'EN_REVISION' | 'APROBADA' | 'RECHAZADA';
 
 export interface LoginRequest {
   correo: string;
@@ -99,6 +100,8 @@ export interface MetaContratoDetalle {
   comentarioDeportista: string | null;
   urlEvidencia: string | null;
   estado: EstadoMeta;
+  evidenciaActual: EvidenciaDetalle | null;
+  evidencias: EvidenciaDetalle[];
 }
 
 export interface ContratoDetalle {
@@ -109,6 +112,8 @@ export interface ContratoDetalle {
   nombreDeportista: string;
   disciplinaDeportista: string | null;
   montoTotal: number;
+  montoRetenido: number;
+  montoLiberado: number;
   estado: EstadoContrato;
   fechaCreacion: string;
   metas: MetaContratoDetalle[];
@@ -118,4 +123,77 @@ export interface AprobarMetaResponse {
   idMeta: number;
   estado: string;
   montoLiberado: number;
+}
+
+export interface EvidenciaDetalle {
+  idEvidencia: number;
+  idMetaContrato: number;
+  numeroIntento: number;
+  nombreOriginal: string;
+  tipoMime: string;
+  tamanioBytes: number;
+  hashSha256: string;
+  comentarioDeportista: string | null;
+  estado: EstadoEvidencia;
+  motivoRechazo: string | null;
+  fechaCarga: string;
+  fechaRevision: string | null;
+  urlArchivo: string;
+}
+
+export interface AprobarEvidenciaResponse {
+  idEvidencia: number;
+  idMeta: number;
+  estadoMeta: EstadoMeta;
+  montoNeto: number;
+  comisionPlataforma: number;
+  saldoRetenido: number;
+  estadoContrato: EstadoContrato;
+}
+
+export interface TransaccionDetalle {
+  id: number;
+  idContrato: number;
+  idMetaContrato: number;
+  montoNeto: number;
+  comisionPlataforma: number;
+  fechaEjecucion: string;
+}
+
+export interface HistorialContrato {
+  idContrato: number;
+  evidencias: EvidenciaDetalle[];
+  transacciones: TransaccionDetalle[];
+}
+
+export interface DashboardResumen {
+  contratos: number;
+  metas: number;
+  metasPendientes: number;
+  evidenciasEnRevision: number;
+  metasPagadas: number;
+  montoComprometido: number;
+  montoRetenido: number;
+  montoLiberado: number;
+  comisionPlataforma: number;
+}
+
+export type TipoNotificacion =
+  | 'CONTRATO_CREADO'
+  | 'EVIDENCIA_ENVIADA'
+  | 'EVIDENCIA_REENVIADA'
+  | 'EVIDENCIA_RECHAZADA'
+  | 'EVIDENCIA_APROBADA'
+  | 'META_PAGADA'
+  | 'CONTRATO_FINALIZADO';
+
+export interface Notificacion {
+  id: number;
+  tipo: TipoNotificacion;
+  mensaje: string;
+  entidadRelacionada: string;
+  idEntidad: string;
+  fecha: string;
+  leida: boolean;
+  fechaLectura: string | null;
 }
