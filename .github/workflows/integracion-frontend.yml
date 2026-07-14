@@ -1,0 +1,39 @@
+name: Integración frontend
+
+on:
+  push:
+    branches: [desarrollo, main]
+  pull_request:
+    branches: [desarrollo, main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Auditoría de dependencias de severidad alta
+        run: npm audit --audit-level=high
+      - name: Pruebas y cobertura
+        run: npm run test:coverage
+      - name: Build de producción
+        run: npm run build
+        env:
+          API_URL: https://api.example.invalid/api
+      - name: Guardar build y cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artefactos-frontend
+          path: |
+            dist/patrocinapp-angular/browser
+            coverage
+          if-no-files-found: warn

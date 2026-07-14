@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { httpErrorMessage } from '../../core/http-error.util';
 
 @Component({
   selector: 'app-login-page',
@@ -11,6 +12,7 @@ import { AuthService } from '../../core/auth.service';
 export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // Se inicializan como strings vacíos para que TypeScript infiera el tipo correcto
   correo = '';
@@ -18,6 +20,12 @@ export class LoginPage {
   
   readonly loading = signal(false);
   readonly error = signal('');
+
+  constructor() {
+    if (this.route.snapshot.queryParamMap.get('sessionExpired') === '1') {
+      this.error.set('Tu sesión expiró. Inicia sesión nuevamente.');
+    }
+  }
 
   submit(): void {
     this.error.set('');
@@ -34,7 +42,7 @@ export class LoginPage {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'No se pudo iniciar sesión. Verifica tu correo y contraseña.');
+        this.error.set(httpErrorMessage(err, 'No se pudo iniciar sesión. Verifica tu correo y contraseña.'));
       }
     });
   }

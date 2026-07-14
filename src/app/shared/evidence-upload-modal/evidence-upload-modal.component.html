@@ -1,0 +1,92 @@
+<div class="modal-overlay" role="presentation" (click)="requestClose()">
+  <section class="modal-content evidence-modal evidence-workflow-modal" role="dialog" aria-modal="true"
+    aria-labelledby="upload-title" (click)="$event.stopPropagation()">
+    <button class="modal-close" type="button" aria-label="Cerrar carga de evidencia" [disabled]="sending()" (click)="requestClose()">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+    <header class="modal-header">
+      <span class="eyebrow">{{ meta().estado === 'RECHAZADA' ? 'Nueva versión' : 'Entrega de evidencia' }}</span>
+      <h3 id="upload-title">{{ meta().estado === 'RECHAZADA' ? 'Enviar evidencia corregida' : 'Subir evidencia del hito' }}</h3>
+      <p>{{ meta().descripcionAcordada }}</p>
+    </header>
+
+    <div class="modal-body evidence-modal-body">
+      @if (meta().estado === 'RECHAZADA' && meta().evidencias.at(-1)?.motivoRechazo; as motivo) {
+        <div class="rejection-reason" role="alert">
+          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+          <div><strong>Motivo del rechazo anterior</strong><p>{{ motivo }}</p></div>
+        </div>
+      }
+
+      <input #fileInput class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4"
+        (change)="onFileSelected($event)" />
+      <input #captureInput class="visually-hidden" type="file" accept="image/*" capture="environment"
+        (change)="onFileSelected($event)" />
+
+      <div class="evidence-source-grid">
+        <button type="button" class="evidence-source-button" [disabled]="sending()" (click)="chooseFile()">
+          <i class="bi bi-folder2-open" aria-hidden="true"></i><span>Seleccionar archivo</span><small>JPEG, PNG, WebP, PDF o MP4</small>
+        </button>
+        <button type="button" class="evidence-source-button" [disabled]="sending()" (click)="useCamera()">
+          <i class="bi bi-camera" aria-hidden="true"></i><span>Usar cámara</span><small>{{ cameraSupported ? 'Captura desde el navegador' : 'Abrir cámara del dispositivo' }}</small>
+        </button>
+      </div>
+
+      <div class="camera-stage" [hidden]="!cameraActive()">
+        <video #cameraVideo muted playsinline aria-label="Vista previa de la cámara"></video>
+        <div class="camera-actions">
+          <button type="button" class="btn btn-primary mini-action" (click)="takePhoto()"><i class="bi bi-camera-fill"></i> Tomar foto</button>
+          <button type="button" class="btn btn-outline mini-action" (click)="requestClose()">Cerrar</button>
+        </div>
+      </div>
+
+      @if (selectedFile(); as file) {
+        <div class="file-preview-card">
+          @if (previewKind() === 'image') { <img [src]="previewUrl()" alt="Vista previa de la evidencia seleccionada" /> }
+          @if (previewKind() === 'video') { <video [src]="previewUrl()" controls aria-label="Vista previa del video seleccionado"></video> }
+          @if (previewKind() === 'pdf') { <iframe [src]="safePdfUrl()" title="Vista previa del PDF seleccionado"></iframe> }
+          <div class="file-metadata">
+            <div><strong>{{ file.name }}</strong><small>{{ formatBytes(file.size) }} · {{ file.type }}</small></div>
+            <button type="button" class="icon-button" aria-label="Quitar archivo seleccionado" [disabled]="sending()" (click)="removeFile()">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="form-group">
+        <label class="form-label" for="evidence-comment">Comentario para el patrocinador <span>(opcional)</span></label>
+        <textarea id="evidence-comment" class="form-input evidence-comment" maxlength="1000" rows="3"
+          [disabled]="sending()" [(ngModel)]="comment" placeholder="Describe brevemente qué demuestra el archivo."></textarea>
+      </div>
+
+      @if (sending() || progress() > 0) {
+        <div class="upload-progress" aria-live="polite">
+          <div><span>Enviando evidencia</span><strong>{{ progress() }}%</strong></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" [style.width.%]="progress()"></div></div>
+        </div>
+      }
+      @if (error()) { <div class="inline-error" role="alert"><i class="bi bi-exclamation-circle"></i> {{ error() }}</div> }
+
+      @if (meta().evidencias.length > 0) {
+        <details class="attempt-history">
+          <summary>Historial de intentos ({{ meta().evidencias.length }})</summary>
+          @for (item of meta().evidencias; track item.idEvidencia) {
+            <div class="attempt-row">
+              <span>Intento {{ item.numeroIntento }} · {{ item.fechaCarga | date:'short' }}</span>
+              <strong [class]="'evidence-state state-' + item.estado.toLowerCase()">{{ item.estado.replace('_', ' ') }}</strong>
+            </div>
+          }
+        </details>
+      }
+    </div>
+
+    <footer class="modal-footer">
+      <button type="button" class="btn btn-outline" [disabled]="sending()" (click)="requestClose()">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-glow" [disabled]="!selectedFile() || sending()" (click)="submit()">
+        <i class="bi" [class.bi-arrow-repeat]="meta().estado === 'RECHAZADA'" [class.bi-upload]="meta().estado !== 'RECHAZADA'"></i>
+        {{ sending() ? 'Enviando...' : (meta().estado === 'RECHAZADA' ? 'Enviar nueva evidencia' : 'Enviar evidencia') }}
+      </button>
+    </footer>
+  </section>
+</div>

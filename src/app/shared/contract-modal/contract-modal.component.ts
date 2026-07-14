@@ -14,12 +14,14 @@ export class ContractModalComponent implements OnInit {
 
   @Input({ required: true }) deportista!: DeportistaCatalogo;
   @Input({ required: true }) idNegocio!: number;
+  @Input() busy = false;
   @Output() close = new EventEmitter<void>();
   @Output() createContract = new EventEmitter<CrearContratoRequest>();
 
   readonly plantillas = signal<PlantillaMeta[]>([]);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly confirmation = signal(false);
 
   selected: Record<number, boolean> = {};
   amounts: Record<number, number> = {};
@@ -59,6 +61,10 @@ export class ContractModalComponent implements OnInit {
     return this.totalDeportista() * 1.10;
   }
 
+  totalComision(): number {
+    return this.totalNegocio() - this.totalDeportista();
+  }
+
   submit(): void {
     const metas = this.plantillas()
       .filter((item) => this.selected[item.id])
@@ -72,6 +78,11 @@ export class ContractModalComponent implements OnInit {
 
     if (metas.length === 0) {
       this.error.set('Selecciona al menos una meta con monto mayor a cero.');
+      return;
+    }
+
+    if (!this.confirmation()) {
+      this.confirmation.set(true);
       return;
     }
 
